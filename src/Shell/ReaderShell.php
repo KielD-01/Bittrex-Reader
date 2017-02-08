@@ -34,6 +34,11 @@ class ReaderShell extends Shell
      */
     private $_jar;
 
+    private $_ignorableFields = [];
+
+    /**
+     * Init method
+     */
     public function main()
     {
         $this->_jar = new CookieJar();
@@ -44,9 +49,30 @@ class ReaderShell extends Shell
         $this->_table = $this->helper('Table');
 
         $this->_setKeyAndSecret();
+
+        $this->_addIgnoreField('LogoUrl')
+            ->_addIgnoreField('IsSponsored');
+
         $this->_getMarkets();
     }
 
+
+    /**
+     * Fluent setter to write ignorable fields
+     *
+     * @param bool $field
+     * @return $this
+     */
+    private function _addIgnoreField($field = false)
+    {
+        $this->_ignorableFields[] = $field;
+
+        return $this;
+    }
+
+    /**
+     * Setting up keys
+     */
     private function _setKeyAndSecret()
     {
         if (($this->_apiKey = Cache::read('api_key')) === false) {
@@ -66,14 +92,19 @@ class ReaderShell extends Shell
         }
     }
 
+    /**
+     * Setting up signature
+     *
+     * @return bool|string
+     */
     private function _setApiSignature()
     {
         if (($this->_apiKey != $this->_apiSecret) != false) {
-            $this->_url = "{$this->_url}?apikey={$this->_apiKey}&nonce=" . time();
+            $url = "{$this->_url}?apikey={$this->_apiKey}&nonce=" . time();
 
             return hash_hmac(
                 'sha512',
-                $this->_url,
+                $url,
                 $this->_apiSecret
             );
         }
@@ -81,6 +112,9 @@ class ReaderShell extends Shell
         return false;
     }
 
+    /**
+     * Sending request to parse markets
+     */
     private function _getMarkets()
     {
         $options = [];
@@ -100,17 +134,37 @@ class ReaderShell extends Shell
         );
     }
 
+    /**
+     * Parsing markets data
+     *
+     * @param array $data
+     */
     private function _parseMarkets($data = [])
     {
-
-        $this->_headers[] = array_values(array_keys($data['result'][0]));
-
         foreach ($data['result'] as $i) {
+
+            $this->_removeFields($i);
+
+            if ($this->_headers == []) {
+                $this->_headers[] = array_values(array_keys($i));
+            }
+
             $this->_headers[] =
-                array_values($i)
-            ;
+                array_values($i);
         }
 
         $this->_table->output($this->_headers);
+    }
+
+    /**
+     * Removing fields You don't want to use
+     *
+     * @param $market
+     */
+    private function _removeFields(&$market)
+    {
+        foreach ($this->_ignorableFields as $ignorableField) {
+            unset($market[$ignorableField]);
+        }
     }
 }
