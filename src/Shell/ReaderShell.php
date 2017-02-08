@@ -3,6 +3,7 @@ namespace App\Shell;
 
 use Cake\Cache\Cache;
 use Cake\Console\Shell;
+use Cake\Log\Log;
 use Cake\Shell\Helper\TableHelper;
 use GuzzleHttp\Client;
 use GuzzleHttp\Cookie\CookieJar;
@@ -16,11 +17,7 @@ class ReaderShell extends Shell
     private $_apiSignature = false;
     private $_url = 'https://bittrex.com/api/v1.1/public/getmarkets';
 
-    private $_headers = [
-        [
-            'Market', 'Base', 'Name', 'Min Trade Size', 'Active'
-        ]
-    ];
+    private $_headers = [];
 
     /**
      * @var TableHelper
@@ -105,14 +102,13 @@ class ReaderShell extends Shell
 
     private function _parseMarkets($data = [])
     {
+
+        $this->_headers[] = array_values(array_keys($data['result'][0]));
+
         foreach ($data['result'] as $i) {
-            $this->_headers[] = [
-                $i['MarketCurrencyLong'],
-                $i['BaseCurrencyLong'],
-                $i['MarketName'],
-                $i['MinTradeSize'],
-                $i['IsActive']
-            ];
+            $this->_headers[] =
+                array_values($i)
+            ;
         }
 
         $this->_table->output($this->_headers);
